@@ -7,15 +7,28 @@
 #include "meeting_request_formats.h"
 #include "queue_ids.h"
 #include <stdbool.h>
+#include <rbtree.h>
 
 #define INT_STR_MAXL 11
 
 int msqid;
 int msgflg = IPC_CREAT | 0666;
 key_t key;
+pthread_mutex_t search;
+
+struct node* root;
+
+typedef struct {
+    meeting_request_buf mrb;
+    pthread_cond_t *rdy;
+    pthread_mutex_t *mut;
+    meeting_response_buf *res;
+} rq_arg;
 
 void* request_receive (void *arg){
-    meeting_request_buf *args= (meeting_request_buf *) arg;
+    rq_arg *qargs = (rq_arg *) arg;
+    meeting_response_buf *args = &(qargs->mrb);
+    //meeting_request_buf *args= (meeting_request_buf *) arg;
     //maybe lock for send???
     if((msgsnd(msqid, args, SEND_BUFFER_LENGTH, IPC_NOWAIT)) < 0) {
         int errnum = errno;
@@ -23,13 +36,36 @@ void* request_receive (void *arg){
         perror("(msgsnd)");
         fprintf(stderr, "Error sending msg: %s\n", strerror( errnum ));
         exit(1);
-    }
-    //message successfully sent
+    }//message successfully sent
 
-    //should we have one thread that is processing responses in that queue and then wakes corresponding thread?
+    if(args->request_id!=0){
+        pthread_mutex_lock(qargs->mut);
+        while(qargs->res==NULL){
+            pthread_cond_wait(qargs->rdy,qargs->mut);
+        }
+        pthread_mutex_unlock(qargs->mut);
+    }
+
+    //dealloc mutex, condition variable, response buffer
+}
+
+void* response_receive(void *arg){
+    int ret;
+    do {
+        meeting_response_buf *rbuf = malloc(sizeof(meeting_response_buf));
+        ret = msgrcv(msqid, rbuf, sizeof(meeting_response_buf)-sizeof(long), 1, 0);//receive type 1 message
+
+        int errnum = errno;
+        if (ret < 0 && errno !=EINTR){
+            fprintf(stderr, "Value of errno: %d\n", errno);
+            perror("Error printed by perror");
+            fprintf(stderr, "Error receiving msg: %s\n", strerror( errnum ));
+        }
+    } while ((ret < 0 ) && (errno == 4));
 }
 
 int main(int argc, char *argv[]){
+    root = NULL;
     meeting_request_buf rbuf;
     key = ftok(FILE_IN_HOME_DIR,QUEUE_NUMBER);
     if (key == 0xffffffff) {
@@ -52,7 +88,7 @@ int main(int argc, char *argv[]){
 
     while(1){
         getline(input,INPUT_SZ,stdin);
-        meeting_request_buf rbuf;
+        rq_arg rarg;
 
         //feed input into delim array by comma
         char delim[6][40];
@@ -76,16 +112,38 @@ int main(int argc, char *argv[]){
             }
         }
 
-        rbuf.mtype = 2;
-        rbuf.request_id=atoi(delim[0]);
-        strncpy(rbuf.empId,delim[1],EMP_ID_MAX_LENGTH);
-        strncpy(rbuf.description_string,delim[2],DESCRIPTION_MAX_LENGTH);
-        strncpy(rbuf.location_string,delim[3],LOCATION_MAX_LENGTH);
-        strncpy(rbuf.datetime,delim[4],DATETIME_LENGTH);
-        rbuf.duration=atoi(delim[5]);
+        rarg.mrb.mtype = 2;
+        rarg.mrb.request_id=atoi(delim[0]);
+        strncpy(rarg.mrb.empId,delim[1],EMP_ID_MAX_LENGTH);
+        strncpy(rarg.mrb.description_string,delim[2],DESCRIPTION_MAX_LENGTH);
+        strncpy(rarg.mrb.location_string,delim[3],LOCATION_MAX_LENGTH);
+        strncpy(rarg.mrb.datetime,delim[4],DATETIME_LENGTH);
+        rarg.mrb.duration=atoi(delim[5]);
         //send last meeting before breaking
 
-        if(rbuf.request_id==0){
+        //make lock and condition variable for storage
+        pthread_mutex_t* pmutex = malloc(sizeof(pthread_mutex_t));
+        pthread_mutex_init(pmutex, NULL);
+        pthread_cond_t* pcond = malloc(sizeof(pthread_cond_t));
+        pthread_cond_init(pcond, NULL);
+
+        struct node* temp = malloc(sizeof(struct node));
+        temp->r = NULL;
+        temp->l = NULL;
+        temp->p = NULL;
+        temp->c=1;
+
+        temp->d = rarg.mrb.request_id;
+        temp->res = NULL;
+        temp->rdy = pcond;
+        temp->mut = pmutex;
+
+        pthread_mutex_lock(&search);
+        root=bst(root, temp);
+        fixup(root,temp);
+        pthread_mutex_unlock(&search);
+
+        if(rarg.mrb.request_id==0){
             break;
         }
     }

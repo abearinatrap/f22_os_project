@@ -48,7 +48,7 @@ archive:
 edu_cs300_MessageJNI.h: ./$(JAVA_SRC_ROOT)/$(JAVA_PKG)/MessageJNI.java
 	javac -cp ${CLASS_PATH}/ -h . $(JAVA_SRC_ROOT)/$(JAVA_PKG)/MessageJNI.java
     
-request_mtgs: request_mtgs.c meeting_request_formats.h
+request_mtgs: request_mtgs.c meeting_request_formats.h queue_ids.h rbtree.h
 	gcc -std=c99 -lpthread -D_GNU_SOURCE $(MAC_FLAG) request_mtgs.c -o request_mtgs
 
 edu_cs300_MessageJNI.o:meeting_request_formats.h edu_cs300_MessageJNI.h system5_msg.c queue_ids.h

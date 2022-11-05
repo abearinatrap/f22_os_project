@@ -1,7 +1,6 @@
 package edu.cs300;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.util.Hashtable;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -19,7 +18,24 @@ public class CalendarManager {
 		//read employees.csv and create new
 		File employeescsv = new File("employees.csv");   
 		if(!f.exists()){
-			System.out.println("Employees file not found. Please run in correct directory")
+			System.out.println("Employees file not found. Please run in correct directory");
+		}
+		try (Scanner scanner = new Scanner(new File("book.csv"));) {
+			while (scanner.hasNextLine()) {
+				List<String> values = new ArrayList<String>();
+				try (Scanner rowScanner = new Scanner(line)) {
+					rowScanner.useDelimiter(COMMA_DELIMITER);
+					while (rowScanner.hasNext()) {
+						values.add(rowScanner.next());
+					}
+				}
+				if(values.size()==0) {
+					break;
+				}
+				ArrayBlockingQueue<MeetingRequest> newQ = new ArrayBlockingQueue<MeetingRequest>(10);
+				empQueueMap.put(values[0], newQ);
+				new Worker(values[0],values[1], newQ, this.resultsOutputArray).start();
+			}
 		}
 
 		return;

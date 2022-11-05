@@ -9,7 +9,7 @@ class Worker extends Thread{
 	  String empId;
 
 
-	  public Worker(String empId,ArrayBlockingQueue<MeetingRequest> incomingRequests, ArrayBlockingQueue<MeetingResponse> outgoingResponse){
+	  public Worker(String empId,String empfile,ArrayBlockingQueue<MeetingRequest> incomingRequests, ArrayBlockingQueue<MeetingResponse> outgoingResponse){
 	    this.incomingRequests=incomingRequests;
 	    this.outgoingResponse=outgoingResponse;
 		this.empId=empId;
@@ -19,7 +19,7 @@ class Worker extends Thread{
 	    DebugLog.log(" Thread ("+this.empId+") thread started ...");
 		try {
 		MeetingRequest mtgReq=(MeetingRequest)this.incomingRequests.take();
-		DebugLog.log("Worker-" + this.empId + " " + mtgReq+" pushing response "+mtgReq.request_id);
+		//DebugLog.log("Worker-" + this.empId + " " + mtgReq+" pushing response "+mtgReq.request_id);
 		this.outgoingResponse.put(new MeetingResponse(mtgReq.request_id,1));
 			
 		} catch(InterruptedException e){
