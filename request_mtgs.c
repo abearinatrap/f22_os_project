@@ -16,6 +16,9 @@ int msgflg = IPC_CREAT | 0666;
 key_t key;
 pthread_mutex_t search;
 
+pthread_t req_threads[200];
+int thread_count;
+
 struct node* root;
 
 typedef struct {
@@ -27,7 +30,7 @@ typedef struct {
 
 void* request_receive (void *arg){
     rq_arg *qargs = (rq_arg *) arg;
-    meeting_response_buf *args = &(qargs->mrb);
+    meeting_request_buf *args = &(qargs->mrb);
     //meeting_request_buf *args= (meeting_request_buf *) arg;
     //maybe lock for send???
     if((msgsnd(msqid, args, SEND_BUFFER_LENGTH, IPC_NOWAIT)) < 0) {
@@ -45,14 +48,16 @@ void* request_receive (void *arg){
         }
         pthread_mutex_unlock(qargs->mut);
     }
-
+    fprintf(stdin, "Meeting request %d for employee %s was rejected due to conflict (%s @ zoom starting %s for %d minutes",args->request_id, args->empId, args->description_string, args->datetime, args->duration);
     //dealloc mutex, condition variable, response buffer
 }
 
 void* response_receive(void *arg){
     int ret;
-    do {
+    while(1){
         meeting_response_buf *rbuf = malloc(sizeof(meeting_response_buf));
+        do {
+        
         ret = msgrcv(msqid, rbuf, sizeof(meeting_response_buf)-sizeof(long), 1, 0);//receive type 1 message
 
         int errnum = errno;
@@ -61,11 +66,39 @@ void* response_receive(void *arg){
             perror("Error printed by perror");
             fprintf(stderr, "Error receiving msg: %s\n", strerror( errnum ));
         }
-    } while ((ret < 0 ) && (errno == 4));
+        } while ((ret < 0 ) && (errno == 4));
+
+        //rbuf.request_id,rbuf.avail
+        pthread_mutex_lock(&search);
+        if(root==NULL) continue;
+        struct node* trav=root;
+        while(trav!=NULL){
+            if(trav->d < rbuf->request_id){
+                trav=trav->r;
+            }else if(trav->d > rbuf->request_id){
+                trav=trav->l;
+            }else{
+                break;
+            }
+        }
+        pthread_mutex_ulock(&search);
+
+        if(trav!=NULL){
+            pthread_mutex_lock(trav->mut);
+            trav->res=rbuf;
+            pthread_cond_signal(trav->rdy);
+            pthread_mutex_unlock(trav->mut);
+        }
+        
+    }
+    
 }
 
 int main(int argc, char *argv[]){
     root = NULL;
+    pthread_mutex_init(&search, NULL);
+    thread_count=0;
+
     meeting_request_buf rbuf;
     key = ftok(FILE_IN_HOME_DIR,QUEUE_NUMBER);
     if (key == 0xffffffff) {
@@ -137,6 +170,8 @@ int main(int argc, char *argv[]){
         temp->res = NULL;
         temp->rdy = pcond;
         temp->mut = pmutex;
+
+        pthread_create(&req_threads[thread_count++],NULL, request_receive, &rarg);
 
         pthread_mutex_lock(&search);
         root=bst(root, temp);

@@ -74,8 +74,8 @@ public class CalendarManager {
 				try {
 					MeetingResponse res = resultsOutputArray.take();
 	
-						MessageJNI.writeMtgReqResponse(res.request_id, res.avail);
-						DebugLog.log(getName()+" writing response "+res);
+					MessageJNI.writeMtgReqResponse(res.request_id, res.avail);
+					DebugLog.log(getName()+" writing response "+res);
 					
 				} catch (Exception e) {
 					System.out.println("Sys5OutputQueueProcessor error "+e.getMessage());

@@ -8,8 +8,7 @@ class Worker extends Thread{
 	  ArrayBlockingQueue<MeetingResponse> outgoingResponse;
 	  String empId;
 
-
-	  public Worker(String empId,String empfile,ArrayBlockingQueue<MeetingRequest> incomingRequests, ArrayBlockingQueue<MeetingResponse> outgoingResponse){
+	  public Worker(String empId,ArrayBlockingQueue<MeetingRequest> incomingRequests, ArrayBlockingQueue<MeetingResponse> outgoingResponse){
 	    this.incomingRequests=incomingRequests;
 	    this.outgoingResponse=outgoingResponse;
 		this.empId=empId;
