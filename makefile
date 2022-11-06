@@ -49,7 +49,7 @@ archive:
 edu_cs300_MessageJNI.h: ./$(JAVA_SRC_ROOT)/$(JAVA_PKG)/MessageJNI.java
 	javac -cp ${CLASS_PATH}/ -h . $(JAVA_SRC_ROOT)/$(JAVA_PKG)/MessageJNI.java
     
-request_mtgs: request_mtgs.c meeting_request_formats.h queue_ids.h
+request_mtgs: request_mtgs.c meeting_request_formats.h queue_ids.h common.h
 	gcc -std=c99 -lpthread -D_GNU_SOURCE $(MAC_FLAG) request_mtgs.c -o request_mtgs
 
 edu_cs300_MessageJNI.o:meeting_request_formats.h edu_cs300_MessageJNI.h system5_msg.c queue_ids.h
@@ -63,6 +63,9 @@ test: msgsnd msgrcv $(CLASSES) $(SHARED_LIB)
 	java -cp ${CLASS_PATH} -Djava.library.path=. edu/cs300/MessageJNI
 	./msgrcv
 
+debug: all
+	java -cp ${CLASS_PATH} -Djava.library.path=. edu/cs300/CalendarManager &
+	./request_mtgs < input.txt
 
 msgsnd: msgsnd_mtg_request.c meeting_request_formats.h queue_ids.h
 	gcc -std=c99 -D_GNU_SOURCE -D$(OSFLAG) msgsnd_mtg_request.c -o msgsnd

@@ -11,7 +11,6 @@ import java.util.Scanner;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Semaphore;
 
 class Worker extends Thread{
 	  TreeMap<LocalDateTime, Meeting> calendar;
@@ -19,14 +18,12 @@ class Worker extends Thread{
 	  ArrayBlockingQueue<MeetingResponse> outgoingResponse;
 	  String empId;
 	  String empFilename;
-	  Semaphore tcnt;
 
-	  public Worker(String empId, String empFilename, ArrayBlockingQueue<MeetingRequest> incomingRequests, ArrayBlockingQueue<MeetingResponse> outgoingResponse, Semaphore c){
+	  public Worker(String empId, String empFilename, ArrayBlockingQueue<MeetingRequest> incomingRequests, ArrayBlockingQueue<MeetingResponse> outgoingResponse){
 	    this.incomingRequests=incomingRequests;
 	    this.outgoingResponse=outgoingResponse;
 		this.empId=empId;
 		this.empFilename=empFilename;
-		this.tcnt=c;
 		this.calendar = new TreeMap<LocalDateTime, Meeting>();
 		  File empFile = new File(empFilename);
 		  if(!empFile.exists()){
@@ -61,15 +58,14 @@ class Worker extends Thread{
 			MeetingRequest mtgReq = (MeetingRequest) this.incomingRequests.take();
 			Boolean accept=true;
 			if(mtgReq.request_id==0){
-				//exit
-				try(FileWriter fw = new FileWriter(new File(this.empFilename))){
+				//exit, first writing data
+				try(FileWriter fw = new FileWriter(new File(this.empFilename+".bak"))){
 					for( Meeting m : this.calendar.values()){
 						fw.write(m.toString()+"\n");
 					}
 				} catch ( IOException e) {
 
 				}
-				this.tcnt.release();
 				return;
 			}
 			if(calendar.containsKey(LocalDateTime.parse(mtgReq.datetime))){

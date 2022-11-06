@@ -6,7 +6,6 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -17,11 +16,9 @@ public class CalendarManager {
 
 	InputQueueProcessor iqp;
 	OutputQueueProcessor oqp;
-	Semaphore thread_cnt;
 	public CalendarManager() {
 		this.resultsOutputArray = new ArrayBlockingQueue<MeetingResponse>(30);
 		empQueueMap = new Hashtable<String,ArrayBlockingQueue<MeetingRequest>>();
-		thread_cnt = new Semaphore(0, true);
 		//read employees.csv and create new
 		File employeescsv = new File("employees.csv");
 		if(!employeescsv.exists()){
@@ -42,8 +39,7 @@ public class CalendarManager {
 
 				ArrayBlockingQueue<MeetingRequest> newQ = new ArrayBlockingQueue<MeetingRequest>(10);
 				empQueueMap.put(values.get(0), newQ);
-				new Worker(values.get(0), values.get(1), newQ, this.resultsOutputArray, thread_cnt).start();
-				thread_cnt.release();
+				new Worker(values.get(0), values.get(1), newQ, this.resultsOutputArray).start();
 			}
 		} catch (FileNotFoundException e) {
 			//handle
@@ -95,6 +91,7 @@ public class CalendarManager {
 					DebugLog.log(getName()+" writing response "+res);
 					
 				} catch (InterruptedException e) {
+					MessageJNI.writeMtgReqResponse(0, 0);
 					return;
 				} catch (Exception e) {
 					DebugLog.log("Sys5OutputQueueProcessor error "+e.getMessage());
@@ -117,14 +114,15 @@ public class CalendarManager {
 			while (true) {
 				MeetingRequest req = MessageJNI.readMeetingRequest();
 				try {
+					if(req==null){
+						continue;
+					}
 					DebugLog.log(getName()+"recvd msg from queue for "+req.empId);
 					if(req.request_id==0){
 						for( ArrayBlockingQueue<MeetingRequest> m: empQueueMap.values()){
 							m.put(req);
 						}
 						//wait until all workers quit
-						thread_cnt.acquire();
-						thread_cnt.release();
 						return;
 					}
 					if (empQueueMap.containsKey(req.empId)) {
