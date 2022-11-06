@@ -18,6 +18,10 @@ key_t key;
 pthread_mutex_t search;
 pthread_mutex_t send;
 
+int num_left;
+pthread_mutex_t mut_end;
+pthread_cond_t cond_end;
+
 pthread_t req_threads[200];
 int thread_count;
 
@@ -35,6 +39,14 @@ void* request_receive (void *arg){
     meeting_request_buf *args = &(qargs->mrb);
     //meeting_request_buf *args= (meeting_request_buf *) arg;
     //maybe lock for send???
+    if(args->request_id==0){
+        pthread_mutex_lock(&mut_end);
+        while( num_left>1) {
+            pthread_cond_wait(&cond_end, &mut_end);
+        }
+        pthread_mutex_unlock(&mut_end);
+    }
+
     pthread_mutex_lock(&send);
     if((msgsnd(msqid, args, SEND_BUFFER_LENGTH, IPC_NOWAIT)) < 0) {
         int errnum = errno;
@@ -44,17 +56,29 @@ void* request_receive (void *arg){
         exit(1);
     }//message successfully sent
     pthread_mutex_unlock(&send);
-
+    int a;
     if(args->request_id!=0){
         pthread_mutex_lock(qargs->mut);
         while(qargs->res==NULL){
             pthread_cond_wait(qargs->rdy,qargs->mut);
         }
+        // need to do this
+        a = qargs->res->avail;
         pthread_mutex_unlock(qargs->mut);
     }
-    fprintf(stdout, "Meeting request %d for employee %s was rejected due to conflict (%s @ %s starting %s for %d minutes\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
+    
+    if(args->request_id!=0){
+        if(a==1){
+            fprintf(stdout, "Meeting request %d for employee %s was accepted (%s @ %s starting %s for %d minutes)\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
+        }else if (a==0){
+            fprintf(stdout, "Meeting request %d for employee %s was rejected due to conflict (%s @ %s starting %s for %d minutes)\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
+        }
+    }
     //dealloc mutex, condition variable, response buffer, request buffer
-
+    free(qargs->rdy);
+    free(qargs->mut);
+    free(qargs->res);
+    free(qargs);
     return NULL;
 }
 
@@ -106,6 +130,11 @@ int main(int argc, char *argv[]){
     root = NULL;
     pthread_mutex_init(&search, NULL);
     pthread_mutex_init(&send, NULL);
+    
+    num_left=0;
+    pthread_mutex_init(&mut_end, NULL);
+    pthread_cond_init(&cond_end, NULL);
+
     thread_count=0;
 
     key = ftok(FILE_IN_HOME_DIR,QUEUE_NUMBER);
@@ -185,7 +214,10 @@ int main(int argc, char *argv[]){
         temp->rdy = pcond;
         temp->mut = pmutex;
 
+        pthread_mutex_lock(&mut_end);
         pthread_create(&req_threads[thread_count++],NULL, request_receive, rarg);
+        num_left++;
+        pthread_mutex_unlock(&mut_end);
 
         pthread_mutex_lock(&search);
         root=bst(root, temp);
@@ -196,11 +228,17 @@ int main(int argc, char *argv[]){
             break;
         }
     }
+
     int i;
     for(i=0;i<thread_count;++i){
         //fprintf(stderr, "waiting %d\n",i);
         pthread_join(req_threads[i], NULL);
+        pthread_mutex_lock(&mut_end);
+        num_left--;
+        if(num_left==1){
+            pthread_cond_signal(&cond_end);
+        }
+        pthread_mutex_unlock(&mut_end);
     }
-    printf("%s",argv[0]);
     free(input);
 }
