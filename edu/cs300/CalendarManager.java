@@ -42,7 +42,6 @@ public class CalendarManager {
 
 				ArrayBlockingQueue<MeetingRequest> newQ = new ArrayBlockingQueue<MeetingRequest>(10);
 				empQueueMap.put(values.get(0), newQ);
-				System.out.println(values.get(0));
 				new Worker(values.get(0), values.get(1), newQ, this.resultsOutputArray, thread_cnt).start();
 				thread_cnt.release();
 			}

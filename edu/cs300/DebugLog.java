@@ -1,6 +1,6 @@
 package edu.cs300;
 public class DebugLog {
- public final static boolean DEBUG = true;    
+ public final static boolean DEBUG = false;
  public static void log(String message) {
   if (DEBUG) {
     String fullClassName = Thread.currentThread().getStackTrace()[2].getClassName();
