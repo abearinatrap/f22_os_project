@@ -10,7 +10,7 @@ struct node {
 	int d; // data
     pthread_cond_t *rdy;
     pthread_mutex_t *mut;
-    meeting_response_buf *res;
+    meeting_response_buf **res;
 	int c; // 1-red, 0-black
 	struct node* p; // parent
 	struct node* r; // right-child

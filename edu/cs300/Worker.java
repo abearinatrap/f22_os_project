@@ -12,15 +12,17 @@ class Worker extends Thread{
 	    this.incomingRequests=incomingRequests;
 	    this.outgoingResponse=outgoingResponse;
 		this.empId=empId;
+
 	  }
 
 	  public void run() {
 	    DebugLog.log(" Thread ("+this.empId+") thread started ...");
 		try {
-		MeetingRequest mtgReq=(MeetingRequest)this.incomingRequests.take();
-		//DebugLog.log("Worker-" + this.empId + " " + mtgReq+" pushing response "+mtgReq.request_id);
-		this.outgoingResponse.put(new MeetingResponse(mtgReq.request_id,1));
-			
+		while(true) {
+			MeetingRequest mtgReq = (MeetingRequest) this.incomingRequests.take();
+			DebugLog.log("Worker-" + this.empId + " " + mtgReq + " pushing response " + mtgReq.request_id + " spots left" + this.outgoingResponse.remainingCapacity());
+			this.outgoingResponse.put(new MeetingResponse(mtgReq.request_id, 1));
+		}
 		} catch(InterruptedException e){
 			System.err.println(e.getMessage());
 		}
