@@ -67,8 +67,8 @@ void* request_receive (void *arg){
         fprintf(stderr, "Error sending msg: %s\n", strerror( errnum ));
         exit(1);
     }//message successfully sent
-
     Pthread_mutex_unlock(&send);
+    
     int a;
     Pthread_mutex_lock(qargs->mut);
     while(qargs->res==NULL){

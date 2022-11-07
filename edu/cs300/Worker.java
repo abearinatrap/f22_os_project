@@ -78,14 +78,14 @@ class Worker extends Thread{
 				//ChronoUnit
 				LocalDateTime lower = calendar.lowerKey(original);
 				if(lower!=null){
-					if(!original.isAfter(lower.plusMinutes(calendar.get(lower).duration))){
+					if(!original.isAfter(lower.plusMinutes(calendar.get(lower).duration)) && !original.isEqual(lower.plusMinutes(calendar.get(lower).duration))){
 						accept=false;
 						DebugLog.log("meeting before\n");
 					}
 				}
 				LocalDateTime higher = calendar.higherKey(original);
 				if(higher!=null){
-					if(!higher.isAfter(original.plusMinutes(mtgReq.duration))){
+					if(!higher.isAfter(original.plusMinutes(mtgReq.duration)) && !higher.isEqual(original.plusMinutes(mtgReq.duration)) ){
 						accept=false;
 						DebugLog.log("meeting after\n");
 					}
