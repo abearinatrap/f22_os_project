@@ -79,14 +79,45 @@ void* request_receive (void *arg){
     // need to do this
     a = qargs->res->avail;
     Pthread_mutex_unlock(qargs->mut);
+
+    
     
     if(args->request_id!=0){
         if(a==1){
-            fprintf(stdout, "Meeting request %d for employee %s was accepted (%s @ %s starting %s for %d minutes)\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
+            //remove quotes from strings
+            fprintf(stdout, "Meeting request %d for employee %s was accepted (",args->request_id, args->empId);
+            if(args->description_string[0]=='"'){
+                int i=1;
+                while(args->description_string[i]!='"' && args->description_string[i]!=0){
+                    fprintf(stdout, "%c", args->description_string[i++]);
+                }
+            }
+            fprintf(stdout, " @ ");
+            if(args->location_string[0]=='"'){
+                int i=1;
+                while(args->location_string[i]!='"' && args->location_string[i]!=0){
+                    fprintf(stdout, "%c", args->location_string[i++]);
+                }
+            }
+            fprintf(stdout, " starting %s for %d minutes)\n", args->datetime, args->duration);
         }else if (a==0){
-            fprintf(stdout, "Meeting request %d for employee %s was rejected due to conflict (%s @ %s starting %s for %d minutes)\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
+            fprintf(stdout, "Meeting request %d for employee %s was declined due to conflict (",args->request_id, args->empId);
+            if(args->description_string[0]=='"'){
+                int i=1;
+                while(args->description_string[i]!='"' && args->description_string[i]!=0){
+                    fprintf(stdout, "%c", args->description_string[i++]);
+                }
+            }
+            fprintf(stdout, " @ ");
+            if(args->location_string[0]=='"'){
+                int i=1;
+                while(args->location_string[i]!='"' && args->location_string[i]!=0){
+                    fprintf(stdout, "%c", args->location_string[i++]);
+                }
+            }
+            fprintf(stdout, " starting %s for %d minutes)\n", args->datetime, args->duration);
         }else {
-            fprintf(stdout, "WEird return val\n");
+            fprintf(stdout, "\n");
         }
     }
 
