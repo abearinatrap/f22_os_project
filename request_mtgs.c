@@ -18,7 +18,7 @@ int msqid;
 int msgflg = IPC_CREAT | 0666;
 key_t key;
 
-//could easily pass in as parameters
+//could easily pass in as parameters but eh
 pthread_mutex_t search;
 pthread_mutex_t send;
 pthread_mutex_t mut_end;
@@ -30,6 +30,7 @@ int num_left;
 struct node* root;
 
 //request thread arguments
+//you know, I could've done without the pointers. but alas
 typedef struct {
     meeting_request_buf mrb;
     pthread_cond_t *rdy;
@@ -37,7 +38,8 @@ typedef struct {
     meeting_response_buf *res;
 } rq_arg;
 
-// SIGINT handlers
+// SIGINT handler
+//since isn't requirement, I make it a one time use
 void SIGINT_hand(int sig)
 {
     int num;
@@ -48,6 +50,7 @@ void SIGINT_hand(int sig)
     signal(SIGINT, SIG_DFL);
 }
 
+//Thread to send requests, and wait for receive.
 void* request_receive (void *arg){
     rq_arg *qargs = (rq_arg *) arg;
     meeting_request_buf *args = &(qargs->mrb);
@@ -62,13 +65,7 @@ void* request_receive (void *arg){
     }
 
     Pthread_mutex_lock(&send);
-    if((msgsnd(msqid, args, SEND_BUFFER_LENGTH, IPC_NOWAIT)) < 0) {
-        int errnum = errno;
-        fprintf(stderr,"%d, %ld, %d, %ld\n", msqid, args->mtype, args->request_id, SEND_BUFFER_LENGTH);
-        perror("(msgsnd)");
-        fprintf(stderr, "Error sending msg: %s\n", strerror( errnum ));
-        exit(1);
-    }//message successfully sent
+    while((msgsnd(msqid, args, SEND_BUFFER_LENGTH, IPC_NOWAIT)) < 0) {}//message successfully sent
     Pthread_mutex_unlock(&send);
 
     int a;
@@ -76,7 +73,6 @@ void* request_receive (void *arg){
     while(qargs->res==NULL){
         Pthread_cond_wait(qargs->rdy,qargs->mut);
     }
-    // need to do this
     a = qargs->res->avail;
     Pthread_mutex_unlock(qargs->mut);
 
@@ -125,6 +121,7 @@ void* request_receive (void *arg){
         }
     }
 
+    //destroy and deallocate personal thread mutexs, condition variables
     Pthread_mutex_destroy(qargs->mut);
     Pthread_cond_destroy(qargs->rdy);
     free(qargs->rdy);
@@ -132,7 +129,7 @@ void* request_receive (void *arg){
     free(qargs->res);
     free(qargs);
 
-    
+    //num left for sigint handler
     Pthread_mutex_lock(&mut_end);
     num_left--;
     Pthread_mutex_unlock(&mut_end);
@@ -148,6 +145,7 @@ void* response_receive(void *arg){
         meeting_response_buf *rbuf = malloc(sizeof(meeting_response_buf));
         if(rbuf==NULL){
             fprintf(stderr,"malloc unsuccessful");
+            exit(1);
         }
         do {
         
@@ -182,8 +180,6 @@ void* response_receive(void *arg){
             }
             Pthread_cond_signal(trav->rdy);
             Pthread_mutex_unlock(trav->mut);
-        }else{
-            fprintf(stderr, "not find node");
         }
         Pthread_mutex_unlock(&search);
 
@@ -280,10 +276,12 @@ int main(int argc, char *argv[]){
         }
         Pthread_cond_init(pcond);
 
+        //add to argument
         rarg->mut=pmutex;
         rarg->rdy=pcond;
         rarg->res=NULL;
 
+        //add mutex, CV, v to RB tree
         struct node* temp = malloc(sizeof(struct node));
         temp->r = NULL;
         temp->l = NULL;
@@ -307,12 +305,13 @@ int main(int argc, char *argv[]){
 
         if(rarg->mrb.request_id==0){
             /*
-                request_id 0 will be last input
+                request_id 0 will be last input, break to close input loop;
             */
             break;
         }
     }
 
+    //join all threads
     int i;
     for(i=0;i<thread_count;++i){
         //fprintf(stderr, "waiting %d\n",i);
