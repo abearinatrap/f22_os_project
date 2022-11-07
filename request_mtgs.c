@@ -26,6 +26,7 @@ pthread_cond_t cond_end;
 
 int num_left;
 
+//for red-black tree
 struct node* root;
 
 //request thread arguments
@@ -36,6 +37,7 @@ typedef struct {
     meeting_response_buf *res;
 } rq_arg;
 
+// SIGINT handlers
 void SIGINT_hand(int sig)
 {
     int num;
@@ -68,7 +70,7 @@ void* request_receive (void *arg){
         exit(1);
     }//message successfully sent
     Pthread_mutex_unlock(&send);
-    
+
     int a;
     Pthread_mutex_lock(qargs->mut);
     while(qargs->res==NULL){
@@ -242,6 +244,7 @@ int main(int argc, char *argv[]){
 
         rarg->mut=pmutex;
         rarg->rdy=pcond;
+        rarg->res=NULL;
 
         struct node* temp = malloc(sizeof(struct node));
         temp->r = NULL;
