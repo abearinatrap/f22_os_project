@@ -85,6 +85,8 @@ void* request_receive (void *arg){
             fprintf(stdout, "Meeting request %d for employee %s was accepted (%s @ %s starting %s for %d minutes)\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
         }else if (a==0){
             fprintf(stdout, "Meeting request %d for employee %s was rejected due to conflict (%s @ %s starting %s for %d minutes)\n",args->request_id, args->empId, args->description_string, args->location_string, args->datetime, args->duration);
+        }else {
+            fprintf(stdout, "WEird return val\n");
         }
     }
 
@@ -136,8 +138,6 @@ void* response_receive(void *arg){
                 break;
             }
         }
-        Pthread_mutex_unlock(&search);
-
         //add data
         if(trav!=NULL){
             Pthread_mutex_lock(trav->mut);
@@ -150,6 +150,9 @@ void* response_receive(void *arg){
         }else{
             fprintf(stderr, "not find node");
         }
+        Pthread_mutex_unlock(&search);
+
+        
         if(endThread) break;
     }
     //fprintf(stderr,"exit reponse");
