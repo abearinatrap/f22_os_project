@@ -65,7 +65,7 @@ test: msgsnd msgrcv $(CLASSES) $(SHARED_LIB)
 
 debug: all
 	java -cp ${CLASS_PATH} -Djava.library.path=. edu/cs300/CalendarManager &
-	./request_mtgs < input.txt
+	./request_mtgs < input2.msg
 
 msgsnd: msgsnd_mtg_request.c meeting_request_formats.h queue_ids.h
 	gcc -std=c99 -D_GNU_SOURCE -D$(OSFLAG) msgsnd_mtg_request.c -o msgsnd

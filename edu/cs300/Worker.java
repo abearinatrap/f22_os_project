@@ -58,7 +58,7 @@ class Worker extends Thread{
 			MeetingRequest mtgReq = (MeetingRequest) this.incomingRequests.take();
 			Boolean accept=true;
 			if(mtgReq.request_id==0){
-				//exit, first writing data
+				//upon receiving 0, kill self, first writing data
 				try(FileWriter fw = new FileWriter(new File(this.empFilename+".bak"))){
 					for( Meeting m : this.calendar.values()){
 						fw.write(m.toString()+"\n");
@@ -68,6 +68,8 @@ class Worker extends Thread{
 				}
 				return;
 			}
+
+			//check to add to calendar
 			if(calendar.containsKey(LocalDateTime.parse(mtgReq.datetime))){
 				DebugLog.log("exact time match\n");
 				this.outgoingResponse.put(new MeetingResponse(mtgReq.request_id, 0));

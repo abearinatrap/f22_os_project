@@ -19,7 +19,7 @@ public class CalendarManager {
 	public CalendarManager() {
 		this.resultsOutputArray = new ArrayBlockingQueue<MeetingResponse>(30);
 		empQueueMap = new Hashtable<String,ArrayBlockingQueue<MeetingRequest>>();
-		//read employees.csv and create new
+		//read employees.csv and create new worker thread foreach
 		File employeescsv = new File("employees.csv");
 		if(!employeescsv.exists()){
 			DebugLog.log("Employees file not found. Please run in correct directory");
@@ -66,6 +66,7 @@ public class CalendarManager {
 		
 		CalendarManager mgr = new CalendarManager();
 
+		//when inputqueue exits, interrupt outputqueue (which handles interrupt)
 		try {
 			mgr.iqp.join();
 		} catch (InterruptedException e){
@@ -91,6 +92,7 @@ public class CalendarManager {
 					DebugLog.log(getName()+" writing response "+res);
 					
 				} catch (InterruptedException e) {
+					//on interrupt write 0 to all.
 					MessageJNI.writeMtgReqResponse(0, 0);
 					return;
 				} catch (Exception e) {
@@ -122,7 +124,7 @@ public class CalendarManager {
 						for( ArrayBlockingQueue<MeetingRequest> m: empQueueMap.values()){
 							m.put(req);
 						}
-						//wait until all workers quit
+						//all workers kill themselves
 						return;
 					}
 					if (empQueueMap.containsKey(req.empId)) {
