@@ -23,14 +23,13 @@ pthread_mutex_t search;
 pthread_mutex_t send;
 pthread_mutex_t mut_end;
 pthread_cond_t cond_end;
-
 int num_left;
 
 //for red-black tree
 struct node* root;
 
 //request thread arguments
-//you know, I could've done without the pointers. but alas
+//could've done without the pointers. but style i guess?
 typedef struct {
     meeting_request_buf mrb;
     pthread_cond_t *rdy;
@@ -80,7 +79,7 @@ void* request_receive (void *arg){
     
     if(args->request_id!=0){
         if(a==1){
-            //removes quotes from description and location if there
+            //removes quotes from description and location if exists. 
             if(args->description_string[0]=='"'){
                 int i=1;
                 while(args->description_string[i]!='"' && args->description_string[i]!=0){
@@ -138,10 +137,12 @@ void* request_receive (void *arg){
 }
 
 void* response_receive(void *arg){
+    /* Thread to distribute responses to corresponding request thread
+    */
     int ret;
     bool endThread=false;
     while(1){
-        //freed in request thread
+        //request thread frees own response buffer
         meeting_response_buf *rbuf = malloc(sizeof(meeting_response_buf));
         if(rbuf==NULL){
             fprintf(stderr,"malloc unsuccessful");
@@ -171,10 +172,12 @@ void* response_receive(void *arg){
                 break;
             }
         }
-        //add data
+        //add data and signal
         if(trav!=NULL){
             Pthread_mutex_lock(trav->mut);
+            //link response to thread.
             *trav->res=rbuf;
+            //kill when 0 response
             if(rbuf->request_id==0){
                 endThread=true;
             }
@@ -299,6 +302,23 @@ int main(int argc, char *argv[]){
         Pthread_mutex_unlock(&mut_end);
 
         Pthread_mutex_lock(&search);
+        // if there are duplicate ids, the rbtree breaks. the input.msg given had duplicate ids but the one shown in assignment.md didn't
+        if(!(root==NULL)){
+            struct node* trav=root;
+            while(trav!=NULL){
+                if(trav->d < temp->d){
+                    trav=trav->r;
+                }else if(trav->d > temp->d){
+                    trav=trav->l;
+                }else{
+                    break;
+                }
+            }
+            if(trav!=NULL){
+                printf("Duplicate ids, bad input. (please clean queue)\n");
+                exit(1);
+            }
+        }
         root=bst(root, temp);
         fixup(root,temp);
         Pthread_mutex_unlock(&search);
