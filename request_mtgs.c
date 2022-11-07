@@ -38,7 +38,7 @@ typedef struct {
 } rq_arg;
 
 // SIGINT handler
-//since isn't requirement, I make it a one time use
+//since isn't requirement, I make it a one time use so you can still cancel program
 void SIGINT_hand(int sig)
 {
     int num;
@@ -54,7 +54,7 @@ void* request_receive (void *arg){
     rq_arg *qargs = (rq_arg *) arg;
     meeting_request_buf *args = &(qargs->mrb);
     
-    //wait for other threads to exit before sending 0
+    //wait for other request threads to exit before sending 0
     if(args->request_id==0){
         Pthread_mutex_lock(&mut_end);
         while( num_left>1) {
@@ -63,10 +63,13 @@ void* request_receive (void *arg){
         Pthread_mutex_unlock(&mut_end);
     }
 
+    //on bigger inputs, without while, program doesn't send because of IPC_NOWAIT flag
+    //it is a while loop in a lock but if it can't send the others can't as well
     Pthread_mutex_lock(&send);
     while((msgsnd(msqid, args, SEND_BUFFER_LENGTH, IPC_NOWAIT)) < 0) {}//message successfully sent
     Pthread_mutex_unlock(&send);
 
+    //wait response
     int a;
     Pthread_mutex_lock(qargs->mut);
     while(qargs->res==NULL){
@@ -76,7 +79,7 @@ void* request_receive (void *arg){
     Pthread_mutex_unlock(qargs->mut);
 
     
-    
+    //print result
     if(args->request_id!=0){
         if(a==1){
             //removes quotes from description and location if exists. 
@@ -159,7 +162,7 @@ void* response_receive(void *arg){
         }
         } while ((ret < 0 ) && (errno == 4));
 
-        //traverse rbtree for request_id to find thread to wake
+        //traverse rbtree for request_id to find thread to wake.
         Pthread_mutex_lock(&search);
         if(root==NULL) continue;
         struct node* trav=root;

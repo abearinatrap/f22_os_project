@@ -5,7 +5,7 @@
 
 	https://www.geeksforgeeks.org/c-program-red-black-tree-insertion/
 
-	(edited to fit purpose)
+	(edited struct to fit purpose)
 	 **/
 #include <stdlib.h>
 #include <pthread.h>
